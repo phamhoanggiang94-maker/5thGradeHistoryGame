@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đường Tìm Kho Báu - Lịch Sử Lớp 5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f3e5ab; 
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Hình nền bản đồ khớp tỷ lệ hoàn hảo trên mọi thiết bị */
+        .map-bg {
+            background-image: url('Gemini_Generated_Image_zcor2hzcor2hzcor.jpg');
+            background-size: 100% 100%;
+            background-position: center;
+            background-color: #dfd3a5;
+            border-radius: 20px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
+        }
+
+        @media (min-width: 768px) {
+            .map-bg { border: 15px solid #5d4037; }
+        }
+        @media (max-width: 767px) {
+            .map-bg { border: 6px solid #5d4037; }
+        }
+
+        .path-line {
+            stroke: #5d4037;
+            stroke-width: 5;
+            stroke-dasharray: 15, 15;
+            fill: none;
+        }
+
+        .question-node {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .team-token {
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 40;
+        }
+
+        .text-shadow { text-shadow: 2px 2px 0 #000; }
+        .card-pop { transition: all 0.2s; box-shadow: 0 6px 0 rgba(0,0,0,0.2); }
+        .card-pop:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+        @media (min-width: 768px) {
+            .card-pop { box-shadow: 0 8px 0 rgba(0,0,0,0.2); }
+            .card-pop:active { transform: translateY(6px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+        }
+        
+        .correct-answer { background-color: #4ade80 !important; color: white !important; transform: scale(1.02); border-color: #22c55e !important; }
+        .wrong-answer { background-color: #f87171 !important; color: white !important; border-color: #ef4444 !important;}
+        
+        .question-bg {
+            background-image: url('https://img.freepik.com/free-vector/hand-drawn-treasure-map-background_23-2149429402.jpg?w=1200&t=st=1700000000~exp=1700000600');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Hiệu ứng nhấp nháy cho lượt chơi */
+        @keyframes pulse-turn {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .turn-active { animation: pulse-turn 1.5s infinite; }
+    </style>
+</head>
+<!-- Sử dụng 100dvh để sửa lỗi che khuất trên trình duyệt di động -->
+<body class="h-[100dvh] w-[100dvw] flex flex-col items-center justify-center p-2 md:p-4">
+
+    <!-- Nhạc nền -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="backgroundmusic.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Nhạc chiến thắng -->
+    <audio id="end-music" preload="auto">
+        <source src="gameend.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Nút bật/tắt nhạc -->
+    <button onclick="toggleMusic()" id="music-btn" class="fixed top-2 right-2 md:top-4 md:right-4 z-[300] bg-white/90 p-3 md:p-4 rounded-full shadow-lg border-2 md:border-4 border-yellow-500 text-yellow-600 text-xl md:text-2xl hover:bg-yellow-100 transition-colors">
+        <i class="fas fa-volume-mute"></i>
+    </button>
+
+    <!-- 1. MÀN HÌNH BẮT ĐẦU -->
+    <div id="screen-start" class="flex flex-col items-center justify-center w-full h-full p-2 md:p-4 z-50">
+        <div class="bg-white/95 p-6 md:p-10 rounded-2xl md:rounded-3xl shadow-2xl text-center border-4 md:border-8 border-yellow-700 w-full max-w-2xl transform transition-all">
+            <h1 class="text-4xl md:text-6xl font-black text-yellow-700 mb-2 md:mb-4 uppercase tracking-tighter">ĐƯỜNG TÌM<br>KHO BÁU</h1>
+            <div class="text-xl md:text-3xl font-bold text-red-600 mb-4 md:mb-6">Môn: Lịch Sử Lớp 5</div>
+            <div class="text-left bg-yellow-100 p-4 md:p-6 rounded-xl mb-6 md:mb-8 border-2 border-yellow-300">
+                <p class="text-lg md:text-xl font-bold text-gray-800 mb-2"><i class="fas fa-scroll text-yellow-600 mr-2"></i> LUẬT CHƠI MỚI:</p>
+                <ul class="text-sm md:text-lg font-bold text-gray-700 space-y-1 md:space-y-2 list-disc pl-5">
+                    <li>Hai đội cùng đua trên bản đồ <span class="text-red-500">15 bước</span>.</li>
+                    <li>Trả lời <b>ĐÚNG</b>: <span class="text-green-600">Tiến 1 bước</span> 🚀</li>
+                    <li>Trả lời <b>SAI</b> hoặc <b>HẾT 60 GIÂY</b>: <span class="text-red-600">Lùi 1 bước</span> ⚠️</li>
+                    <li><b>ĐẶC BIỆT:</b> Mỗi đội có 3 quyền trợ giúp!</li>
+                    <li>Đội nào đến Đích (bước 15) trước sẽ chiến thắng!</li>
+                </ul>
+            </div>
+            <button onclick="startGame()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 md:py-4 md:px-12 rounded-full text-2xl md:text-3xl card-pop border-b-4 md:border-b-8 border-yellow-900 w-full block cursor-pointer">
+                <i class="fas fa-play mr-2"></i> BẮT ĐẦU ĐUA
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. MÀN HÌNH BẢN ĐỒ (MAP) -->
+    <div id="screen-map" class="hidden w-full h-full flex-col p-1 md:p-2 max-w-7xl mx-auto relative map-bg overflow-hidden aspect-[1000/550] max-h-full">
+        
+        <!-- Bảng điểm & Trạng thái -->
+        <div class="flex justify-between items-center mb-1 md:mb-2 px-2 py-1 md:px-6 md:py-3 bg-white/90 rounded-full shadow-lg border-2 md:border-4 border-brown-500 z-50">
+            <div id="map-team-1" class="flex items-center space-x-1 md:space-x-3 text-blue-700 bg-blue-100 px-3 py-1 md:px-6 md:py-2 rounded-full border md:border-2 border-blue-400 transition-all">
+                <i class="fas fa-ship text-lg md:text-3xl"></i>
+                <div class="flex flex-col">
+                    <span class="text-[10px] md:text-sm font-bold leading-none">ĐỘI 1</span>
+                    <span class="text-sm md:text-2xl font-black leading-none">Bước <span id="map-score-1">0</span></span>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <div class="text-xs md:text-2xl font-black text-brown-800 uppercase px-3 py-1 md:px-8 md:py-2 bg-yellow-300 rounded-full border md:border-2 border-yellow-600 shadow" id="map-info">
+                    Lượt của Đội 1
+                </div>
+            </div>
+
+            <div id="map-team-2" class="flex items-center space-x-1 md:space-x-3 text-red-700 bg-red-100 px-3 py-1 md:px-6 md:py-2 rounded-full border md:border-2 border-red-400 transition-all opacity-50">
+                <div class="flex flex-col text-right">
+                    <span class="text-[10px] md:text-sm font-bold leading-none">ĐỘI 2</span>
+                    <span class="text-sm md:text-2xl font-black leading-none">Bước <span id="map-score-2">0</span></span>
+                </div>
+                <i class="fas fa-anchor text-lg md:text-3xl"></i>
+            </div>
+        </div>
+
+        <!-- SVG Map Container -->
+        <div class="absolute inset-0 top-[50px] md:top-[80px]" id="map-area">
+            <svg id="map-svg" class="w-full h-full" viewBox="0 0 1000 550" preserveAspectRatio="xMidYMid meet">
+                <!-- Đường nối dài từ Start đến 15 -->
+                <path id="map-path" class="path-line" d="M 80 480 Q 200 450 300 480 T 550 480 T 750 380 T 900 250 T 750 120 T 500 80 T 250 150" />
+                
+                <!-- Các điểm nút câu hỏi (Sẽ render bằng JS) -->
+                <g id="nodes-group"></g>
+
+                <!-- Hai token di chuyển -->
+                <!-- Token Đội 1 -->
+                <g id="token-1" class="team-token">
+                    <circle r="18" fill="#3b82f6" stroke="#ffffff" stroke-width="4" filter="drop-shadow(0px 4px 3px rgba(0,0,0,0.4))" />
+                    <text y="6" text-anchor="middle" fill="white" font-size="16" font-weight="900">1</text>
+                </g>
+                <!-- Token Đội 2 -->
+                <g id="token-2" class="team-token">
+                    <circle r="18" fill="#ef4444" stroke="#ffffff" stroke-width="4" filter="drop-shadow(0px 4px 3px rgba(0,0,0,0.4))" />
+                    <text y="6" text-anchor="middle" fill="white" font-size="16" font-weight="900">2</text>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Nút Bốc câu hỏi (Vị trí 5/8 bên trái -> top-[62.5%]) -->
+        <div class="absolute top-[62.5%] left-[5%] md:left-[10%] transform -translate-y-1/2 z-50">
+            <button onclick="drawQuestion()" class="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-black text-lg md:text-4xl py-3 px-6 md:py-5 md:px-12 rounded-full border-b-4 md:border-b-8 border-yellow-800 card-pop shadow-[0_0_15px_rgba(250,204,21,0.6)] md:shadow-[0_0_30px_rgba(250,204,21,0.6)] flex items-center gap-2 md:gap-4 animate-pulse">
+                <i class="fas fa-gem text-yellow-100"></i> BỐC CÂU HỎI
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. MÀN HÌNH CÂU HỎI (Cho phép cuộn dọc mượt mà) -->
+    <div id="screen-question" class="hidden w-full flex-1 min-h-0 p-2 md:p-4 max-w-6xl mx-auto z-50 overflow-y-auto overflow-x-hidden">
+        <!-- Đã thêm khoảng trống an toàn pb-8/pb-12 ở đáy để nút không bị che lẹm -->
+        <div class="bg-[#dfd3a5] rounded-2xl md:rounded-3xl p-3 pb-8 md:p-6 md:pb-12 shadow-2xl border-4 md:border-8 border-yellow-700 flex flex-col relative overflow-hidden question-bg min-h-full">
+            <!-- Overlay làm mờ background để dễ đọc chữ -->
+            <div class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-0"></div>
+
+            <div class="flex flex-col md:flex-row justify-between items-center mb-3 md:mb-4 relative z-10 gap-2">
+                <div id="q-team-indicator" class="px-4 py-2 md:px-8 md:py-3 rounded-full text-white font-black text-lg md:text-2xl shadow-md border-2 md:border-4 border-white w-full md:w-auto text-center">
+                    ĐỘI 1 TRẢ LỜI
+                </div>
+                <!-- Vùng quyền trợ giúp -->
+                <div class="flex flex-wrap justify-center gap-2 md:gap-3 bg-white/90 p-2 rounded-xl md:rounded-2xl border-2 border-yellow-600 shadow-lg w-full md:w-auto" id="helps-container">
+                    <span class="font-bold text-gray-800 flex items-center px-1 md:px-2 text-xs md:text-base">Trợ giúp:</span>
+                    <button id="help-ask" onclick="useHelp('ask')" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-2 md:py-2 md:px-4 rounded-lg md:rounded-xl card-pop border-b-2 md:border-b-4 border-purple-700 flex items-center gap-1 md:gap-2 text-xs md:text-base">
+                        <i class="fas fa-users"></i> Hỏi
+                    </button>
+                    <button id="help-5050" onclick="useHelp('fifty')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-1 px-2 md:py-2 md:px-4 rounded-lg md:rounded-xl card-pop border-b-2 md:border-b-4 border-orange-700 flex items-center gap-1 md:gap-2 text-xs md:text-base">
+                        <i class="fas fa-star-half-alt"></i> 50:50
+                    </button>
+                    <button id="help-change" onclick="useHelp('change')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 md:py-2 md:px-4 rounded-lg md:rounded-xl card-pop border-b-2 md:border-b-4 border-blue-700 flex items-center gap-1 md:gap-2 text-xs md:text-base">
+                        <i class="fas fa-sync-alt"></i> Thay câu
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thanh đếm ngược thời gian -->
+            <div class="relative w-full h-6 md:h-8 bg-white/80 rounded-full mb-3 md:mb-4 overflow-hidden border-2 border-yellow-600 z-10 shadow-inner flex-shrink-0">
+                <div id="timer-bar" class="h-full bg-green-500 transition-all duration-1000 ease-linear w-full"></div>
+                <div class="absolute inset-0 flex items-center justify-center font-black text-sm md:text-lg text-gray-800" id="timer-text">60s</div>
+            </div>
+
+            <div class="flex-grow flex items-center justify-center bg-white/95 rounded-xl md:rounded-2xl p-4 md:p-8 mb-4 md:mb-6 border-2 md:border-4 border-yellow-600 relative z-10 shadow-xl min-h-[120px]">
+                <h2 id="q-text" class="text-xl md:text-4xl lg:text-5xl font-bold text-center text-gray-800 leading-snug w-full">
+                    Nội dung câu hỏi?
+                </h2>
+            </div>
+
+            <!-- Responsive Grid: 1 cột trên ĐT, 2 cột trên Tablet/Desktop -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 relative z-10 flex-shrink-0" id="options-container">
+                <button onclick="handleAnswer(0)" id="btn-opt-0" class="opt-btn bg-white hover:bg-yellow-50 border-2 md:border-4 border-yellow-600 p-3 md:p-6 rounded-xl md:rounded-2xl text-base md:text-2xl font-bold flex items-center card-pop shadow-md md:shadow-lg transition-all duration-300">
+                    <span class="w-8 h-8 md:w-14 md:h-14 bg-yellow-200 rounded-full flex items-center justify-center mr-3 md:mr-4 text-yellow-800 shadow-inner border md:border-2 border-yellow-500 flex-shrink-0">A</span>
+                    <span id="opt-0" class="text-left text-gray-800 break-words w-full">Đáp án A</span>
+                </button>
+                <button onclick="handleAnswer(1)" id="btn-opt-1" class="opt-btn bg-white hover:bg-yellow-50 border-2 md:border-4 border-yellow-600 p-3 md:p-6 rounded-xl md:rounded-2xl text-base md:text-2xl font-bold flex items-center card-pop shadow-md md:shadow-lg transition-all duration-300">
+                    <span class="w-8 h-8 md:w-14 md:h-14 bg-yellow-200 rounded-full flex items-center justify-center mr-3 md:mr-4 text-yellow-800 shadow-inner border md:border-2 border-yellow-500 flex-shrink-0">B</span>
+                    <span id="opt-1" class="text-left text-gray-800 break-words w-full">Đáp án B</span>
+                </button>
+                <button onclick="handleAnswer(2)" id="btn-opt-2" class="opt-btn bg-white hover:bg-yellow-50 border-2 md:border-4 border-yellow-600 p-3 md:p-6 rounded-xl md:rounded-2xl text-base md:text-2xl font-bold flex items-center card-pop shadow-md md:shadow-lg transition-all duration-300">
+                    <span class="w-8 h-8 md:w-14 md:h-14 bg-yellow-200 rounded-full flex items-center justify-center mr-3 md:mr-4 text-yellow-800 shadow-inner border md:border-2 border-yellow-500 flex-shrink-0">C</span>
+                    <span id="opt-2" class="text-left text-gray-800 break-words w-full">Đáp án C</span>
+                </button>
+                <button onclick="handleAnswer(3)" id="btn-opt-3" class="opt-btn bg-white hover:bg-yellow-50 border-2 md:border-4 border-yellow-600 p-3 md:p-6 rounded-xl md:rounded-2xl text-base md:text-2xl font-bold flex items-center card-pop shadow-md md:shadow-lg transition-all duration-300">
+                    <span class="w-8 h-8 md:w-14 md:h-14 bg-yellow-200 rounded-full flex items-center justify-center mr-3 md:mr-4 text-yellow-800 shadow-inner border md:border-2 border-yellow-500 flex-shrink-0">D</span>
+                    <span id="opt-3" class="text-left text-gray-800 break-words w-full">Đáp án D</span>
+                </button>
+            </div>
+
+            <!-- Vùng nút hành động sau khi trả lời -->
+            <div id="action-buttons" class="hidden mt-4 mb-2 md:mt-6 w-full relative z-10 px-0 md:px-4 flex-shrink-0">
+                <button onclick="continueJourney()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 md:py-5 rounded-xl md:rounded-2xl text-xl md:text-3xl card-pop border-b-4 md:border-b-8 border-green-700 flex items-center justify-center gap-2 md:gap-3 shadow-lg cursor-pointer block">
+                    Tiếp tục hành trình <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. MÀN HÌNH KẾT THÚC -->
+    <div id="screen-end" class="hidden flex-col items-center justify-center w-full h-full bg-black/90 fixed inset-0 z-[100] p-4">
+        <div class="bg-white p-6 md:p-12 rounded-2xl md:rounded-3xl text-center border-4 md:border-8 border-yellow-500 animate-bounce-in max-w-3xl w-full">
+            <i class="fas fa-crown text-6xl md:text-8xl text-yellow-400 mb-4 md:mb-6 drop-shadow-lg"></i>
+            <h2 class="text-3xl md:text-5xl font-black text-gray-800 mb-2 md:mb-4">CHÚC MỪNG TÂN VƯƠNG!</h2>
+            <div id="winner-announcement" class="text-4xl md:text-6xl font-black text-red-600 mb-6 md:mb-10 uppercase text-shadow-sm">ĐỘI 1 CHIẾN THẮNG</div>
+            <button onclick="location.reload()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 md:px-12 md:py-5 rounded-full text-xl md:text-3xl font-bold card-pop border-b-4 md:border-b-8 border-green-800 w-full block cursor-pointer">
+                <i class="fas fa-redo-alt mr-2"></i> CHƠI LẠI TỪ ĐẦU
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Thông báo -->
+    <div id="toast" class="fixed top-[-100px] left-1/2 transform -translate-x-1/2 w-11/12 md:w-auto px-4 py-3 md:px-12 md:py-6 rounded-full text-white font-black text-lg md:text-3xl opacity-0 transition-all duration-500 z-[400] shadow-2xl flex items-center justify-center gap-2 md:gap-4 pointer-events-none border-2 md:border-4 border-white text-center"></div>
+
+<script>
+    // --- KHU VỰC NHẠC NỀN ---
+    let isMusicPlaying = false;
+    const bgMusic = document.getElementById('bg-music');
+    bgMusic.volume = 0.5; // Âm lượng 50%
+    
+    const endMusic = document.getElementById('end-music');
+    endMusic.volume = 0.8;
+
+    function toggleMusic() {
+        if (isMusicPlaying) {
+            bgMusic.pause();
+            document.getElementById('music-btn').innerHTML = '<i class="fas fa-volume-mute"></i>';
+            document.getElementById('music-btn').classList.replace('text-green-600', 'text-yellow-600');
+        } else {
+            bgMusic.play().catch(e => console.log(e));
+            document.getElementById('music-btn').innerHTML = '<i class="fas fa-music"></i>';
+            document.getElementById('music-btn').classList.replace('text-yellow-600', 'text-green-600');
+        }
+        isMusicPlaying = !isMusicPlaying;
+    }
+
+    // 1. DỮ LIỆU CÂU HỎI & ĐÁP ÁN (Ngân hàng 45 câu hỏi: 30 cũ + 15 mới)
+    // A=0, B=1, C=2, D=3
+    const questions = [
+        // --- 15 Câu hỏi cũ (Bộ 1) ---
+        { q: "Người dân Văn Lang, Âu Lạc đúc đồng chủ yếu để làm gì?", a: ["Làm đồ trang sức cao cấp.", "Làm công cụ lao động và vũ khí.", "Trang trí nhà cửa, đền tháp.", "Trao đổi hàng hóa với các nước phương Tây."], c: 1 },
+        { q: "Vương quốc Phù Nam ra đời và phát triển chủ yếu ở khu vực nào của Việt Nam ngày nay?", a: ["Đồng bằng sông Hồng.", "Miền núi phía Bắc.", "Đồng bằng sông Cửu Long.", "Duyên hải miền Trung."], c: 2 },
+        { q: "Công trình kiến trúc tiêu biểu nào sau đây là di sản văn hóa của Vương quốc Chăm-pa?", a: ["Cố đô Hoa Lư.", "Hoàng thành Thăng Long.", "Thánh địa Mỹ Sơn.", "Phố cổ Hội An."], c: 2 },
+        { q: "Cuộc khởi nghĩa nào đã mở đầu cho thời kỳ đấu tranh giành lại độc lập của nhân dân ta thời Bắc thuộc?", a: ["Khởi nghĩa Hai Bà Trưng.", "Khởi nghĩa Lý Bí.", "Khởi nghĩa Bà Triệu.", "Khởi nghĩa Mai Thúc Loan."], c: 0 },
+        { q: "Chiến thắng nào trên sông Bạch Đằng năm 938 đã chấm dứt hoàn toàn thời kỳ Bắc thuộc, mở ra kỷ nguyên độc lập lâu dài cho dân tộc?", a: ["Chiến thắng của Lê Hoàn.", "Chiến thắng của Ngô Quyền.", "Chiến thắng của Trần Hưng Đạo.", "Chiến thắng của Lý Thường Kiệt."], c: 1 },
+        { q: "Vua Lý Thái Tổ ban chiếu dời đô từ Hoa Lư về thành Đại La (sau đổi tên là Thăng Long) vào năm nào?", a: ["1010.", "1009.", "1011.", "938."], c: 0 },
+        { q: "Tên gọi Thăng Long (Hà Nội ngày nay) mang ý nghĩa gì?", a: ["Rồng cuộn.", "Rồng bay lên.", "Rồng vàng.", "Rồng hạ xuống."], c: 1 },
+        { q: "Triều Trần được thành lập sau khi vị vua cuối cùng của nhà Lý nhường ngôi cho Trần Cảnh. Vị vua đó là ai?", a: ["Lý Thái Tông.", "Lý Nhân Tông.", "Lý Thần Tông.", "Lý Chiêu Hoàng."], c: 3 },
+        { q: "Dưới thời Trần, quân và dân ta đã bao nhiêu lần đánh tan quân xâm lược Mông - Nguyên?", a: ["1 lần.", "2 lần.", "3 lần.", "4 lần."], c: 2 },
+        { q: "Ai là lãnh tụ tối cao của cuộc khởi nghĩa Lam Sơn chống lại quân Minh xâm lược?", a: ["Nguyễn Trãi.", "Lê Lợi.", "Trần Hưng Đạo.", "Quang Trung."], c: 1 },
+        { q: "Bộ luật nổi tiếng được ban hành dưới thời Hậu Lê (đặc biệt dưới thời vua Lê Thánh Tông) có tên là gì?", a: ["Hình thư.", "Quốc triều hình luật (Luật Hồng Đức).", "Hoàng Việt luật lệ (Luật Gia Long).", "Luật Hình."], c: 1 },
+        { q: "Sau khi lên ngôi, vua Gia Long (Nguyễn Ánh) đã chọn nơi nào làm kinh đô của triều Nguyễn?", a: ["Thăng Long (Hà Nội).", "Hoa Lư (Ninh Bình).", "Phú Xuân (Huế).", "Cổ Loa (Đông Anh)."], c: 2 },
+        { q: "Triều đại phong kiến cuối cùng trong lịch sử Việt Nam là triều đại nào?", a: ["Triều Trần.", "Triều Hậu Lê.", "Triều Tây Sơn.", "Triều Nguyễn."], c: 3 },
+        { q: "Sự kiện lịch sử trọng đại nào đã diễn ra vào ngày 2/9/1945 tại Quảng trường Ba Đình (Hà Nội)?", a: ["Bác Hồ đọc bản Tuyên ngôn Độc lập, khai sinh nước Việt Nam Dân chủ Cộng hòa.", "Khởi nghĩa giành chính quyền ở Hà Nội thành công.", "Thành lập Đảng Cộng sản Việt Nam.", "Quân đội ta tiến vào giải phóng Thủ đô."], c: 0 },
+        { q: "Chiến thắng Điện Biên Phủ năm 1954 đã kết thúc thắng lợi cuộc kháng chiến chống lại kẻ thù nào?", a: ["Thực dân Anh.", "Thực dân Pháp.", "Đế quốc Mỹ.", "Phát xít Nhật."], c: 1 },
+        
+        // --- 15 Câu hỏi cũ (Bộ 2) ---
+        { q: "Nguyễn Tất Thành (Bác Hồ) ra đi tìm đường cứu nước từ đâu?", a: ["Bến Nhà Rồng", "Cảng Hải Phòng", "Cảng Đà Nẵng", "Bến Ninh Kiều"], c: 0 },
+        { q: "Tên gọi nước ta thời An Dương Vương là gì?", a: ["Văn Lang", "Âu Lạc", "Đại Ngu", "Đại Việt"], c: 1 },
+        { q: "Khởi nghĩa Hai Bà Trưng nổ ra vào mùa xuân năm nào?", a: ["Năm 40", "Năm 248", "Năm 542", "Năm 938"], c: 0 },
+        { q: "Ai là người được giao nhiệm vụ Tổng chỉ huy chiến dịch Điện Biên Phủ năm 1954?", a: ["Phạm Văn Đồng", "Trường Chinh", "Đại tướng Võ Nguyên Giáp", "Lê Duẩn"], c: 2 },
+        { q: "Trận 'Điện Biên Phủ trên không' ở Hà Nội diễn ra vào năm nào?", a: ["1954", "1968", "1972", "1975"], c: 2 },
+        { q: "'Bao giờ người Tây nhổ hết cỏ nước Nam thì mới hết người Nam đánh Tây' là câu nói của ai?", a: ["Trương Định", "Nguyễn Trung Trực", "Nguyễn Hữu Huân", "Phan Đình Phùng"], c: 1 },
+        { q: "Tuyến đường Trường Sơn trong kháng chiến chống Mỹ còn được gọi là gì?", a: ["Đường mòn Hồ Chí Minh", "Đường số 1A", "Đường Trường Sơn Đông", "Đường Quyết Thắng"], c: 0 },
+        { q: "Phong trào 'Đồng Khởi' (1959 - 1960) nổ ra mạnh mẽ và tiêu biểu nhất ở tỉnh nào?", a: ["Bến Tre", "Trà Vinh", "Mỹ Tho", "Tây Ninh"], c: 0 },
+        { q: "Ai là người bóp nát quả cam tại bến Bình Than vì không được dự bàn việc nước?", a: ["Trần Quốc Toản", "Trần Quốc Tuấn", "Trần Khánh Dư", "Phạm Ngũ Lão"], c: 0 },
+        { q: "Vị vua nào đã cho lập Văn Miếu vào năm 1070?", a: ["Lý Thái Tổ", "Lý Thái Tông", "Lý Thánh Tông", "Lý Nhân Tông"], c: 2 },
+        { q: "Ngày giải phóng hoàn toàn miền Nam, thống nhất đất nước là ngày nào?", a: ["7/5/1954", "30/4/1975", "2/9/1945", "10/10/1954"], c: 1 },
+        { q: "Anh hùng nào đã lấy thân mình lấp lỗ châu mai trong chiến dịch Điện Biên Phủ?", a: ["Bế Văn Đàn", "Tô Vĩnh Diện", "Phan Đình Giót", "La Văn Cầu"], c: 2 },
+        { q: "Đinh Bộ Lĩnh đã có công gì đối với đất nước?", a: ["Dẹp loạn 12 sứ quân, thống nhất đất nước.", "Đánh tan quân Nam Hán trên sông Bạch Đằng.", "Dời đô từ Hoa Lư về Thăng Long.", "Sáng lập ra triều đại nhà Tiền Lê."], c: 0 },
+        { q: "Lời kêu gọi Toàn quốc kháng chiến của Chủ tịch Hồ Chí Minh phát ra vào năm nào?", a: ["1945", "1946", "1954", "1975"], c: 1 },
+        { q: "Nước ta chính thức đổi tên thành 'Cộng hòa Xã hội chủ nghĩa Việt Nam' vào năm nào?", a: ["1945", "1954", "1975", "1976"], c: 3 },
+
+        // --- 15 Câu hỏi mới thêm vào (Câu 16 - 30) ---
+        { q: "Sau khi dẹp loạn 12 sứ quân và thống nhất đất nước, Đinh Bộ Lĩnh lên ngôi Hoàng đế và đặt tên nước là gì?", a: ["Đại Việt.", "Đại Ngu.", "Đại Cồ Việt.", "Vạn Xuân."], c: 2 },
+        { q: "Vị tướng nào đã lãnh đạo quân dân ta đánh bại quân Tống xâm lược lần thứ nhất (năm 981)?", a: ["Ngô Quyền.", "Lê Hoàn (Lê Đại Hành).", "Lý Thường Kiệt.", "Trần Hưng Đạo."], c: 1 },
+        { q: "Trận chiến hào hùng trên phòng tuyến sông nào đã đánh bại hoàn toàn ý chí xâm lược của quân Tống lần thứ hai (năm 1077)?", a: ["Sông Bạch Đằng.", "Sông Hồng.", "Sông Như Nguyệt (sông Cầu).", "Sông Mã."], c: 2 },
+        { q: "Trường đại học đầu tiên của nước ta được thành lập dưới thời Lý (năm 1076) có tên là gì?", a: ["Quốc học Huế.", "Văn Miếu - Quốc Tử Giám.", "Viện Hàn lâm.", "Thái y viện."], c: 1 },
+        { q: "Dưới thời Trần, để thể hiện quyết tâm đánh giặc Mông - Nguyên, các bô lão đã đồng thanh hô to \"Đánh!\" tại hội nghị nào?", a: ["Hội nghị Bình Than.", "Hội nghị Lũng Nhai.", "Hội nghị Diên Hồng.", "Hội nghị Tân Trào."], c: 2 },
+        { q: "Tác giả của áng thiên cổ hùng văn \"Hịch tướng sĩ\" – tác phẩm được viết để khích lệ tinh thần chiến đấu của quân đội nhà Trần là ai?", a: ["Trần Thủ Độ.", "Trần Quốc Toản.", "Trần Hưng Đạo (Trần Quốc Tuấn).", "Trần Nhân Tông."], c: 2 },
+        { q: "Triều đại nào đã để lại nhiều châu bản, mộc bản nhất khẳng định quá trình khai thác và thực thi chủ quyền của Việt Nam đối với quần đảo Hoàng Sa và Trường Sa?", a: ["Triều Lý.", "Triều Trần.", "Triều Hậu Lê.", "Triều Nguyễn."], c: 3 },
+        { q: "Nguyễn Huệ lên ngôi Hoàng đế, lấy niên hiệu là Quang Trung vào năm nào để tiến quân ra Bắc đánh đuổi quân Thanh?", a: ["1788.", "1789.", "1792.", "1802."], c: 0 },
+        { q: "Trận đánh nào của nghĩa quân Tây Sơn đã đập tan hoàn toàn 29 vạn quân Thanh xâm lược vào đúng mùng 5 Tết Kỷ Dậu?", a: ["Trận Rạch Gầm - Xoài Mút.", "Trận Chi Lăng - Xương Giang.", "Trận Ngọc Hồi - Đống Đa.", "Trận Bạch Đằng."], c: 2 },
+        { q: "Ngày 5/6/1911, người thanh niên yêu nước Nguyễn Tất Thành (Bác Hồ) đã ra đi tìm đường cứu nước tại đâu?", a: ["Cảng Hải Phòng.", "Bến Nhà Rồng (Sài Gòn).", "Cảng Tiên Sa (Đà Nẵng).", "Ga Hàng Cỏ (Hà Nội)."], c: 1 },
+        { q: "Sự kiện lịch sử trọng đại diễn ra vào ngày 3/2/1930 là gì?", a: ["Thành lập Đảng Cộng sản Việt Nam.", "Nước Việt Nam Dân chủ Cộng hòa ra đời.", "Khởi nghĩa giành chính quyền ở Hà Nội.", "Chiến thắng Điện Biên Phủ."], c: 0 },
+        { q: "Trước ngày Quốc khánh 2/9/1945, nhân dân ta đã tiến hành thành công sự kiện nào để giành lại chính quyền từ tay phát xít Nhật và tay sai?", a: ["Phong trào Xô viết Nghệ - Tĩnh.", "Khởi nghĩa Nam Kì.", "Cách mạng tháng Tám.", "Tổng tiến công và nổi dậy mùa Xuân 1975."], c: 2 },
+        { q: "Đại tướng nào là Tổng tư lệnh, trực tiếp chỉ huy Chiến dịch Điện Biên Phủ (1954)?", a: ["Nguyễn Chí Thanh.", "Văn Tiến Dũng.", "Võ Nguyên Giáp.", "Hoàng Văn Thái."], c: 2 },
+        { q: "Chiến dịch lịch sử nào vào mùa xuân năm 1975 đã giải phóng hoàn toàn miền Nam, thống nhất đất nước?", a: ["Chiến dịch Tây Nguyên.", "Chiến dịch Huế - Đà Nẵng.", "Chiến dịch Đường 9 - Khe Sanh.", "Chiến dịch Hồ Chí Minh."], c: 3 },
+        { q: "Công cuộc Đổi mới đất nước, đưa nước ta thoát khỏi khủng hoảng kinh tế - xã hội được Đảng ta khởi xướng từ năm nào?", a: ["1975.", "1986.", "1990.", "2000."], c: 1 }
+    ];
+
+    // 2. BIẾN TRẠNG THÁI
+    const TOTAL_STEPS = 15;
+    let teamProgress = [0, 0]; // Vị trí hiện tại của 2 đội (0 đến 15)
+    let currentTeamTurn = 0; // 0: Đội 1, 1: Đội 2
+    let shuffledQuestions = [];
+    let currentQIndex = 0; // Vị trí bốc câu hỏi trong mảng đã shuffle
+    let currentDrawnQuestion = null;
+    let isProcessing = false;
+
+    // Các biến cho đồng hồ đếm ngược
+    let timerInterval;
+    let timeLeft = 60;
+
+    // Quyền trợ giúp của 2 đội
+    let helps = [
+        { ask: true, fifty: true, change: true }, // Đội 1
+        { ask: true, fifty: true, change: true }  // Đội 2
+    ];
+
+    const mapPath = document.getElementById('map-path');
+    const nodesGroup = document.getElementById('nodes-group');
+    const token1 = document.getElementById('token-1');
+    const token2 = document.getElementById('token-2');
+
+    // 3. KHỞI TẠO BẢN ĐỒ VÀ TRỘN CÂU HỎI
+    function startGame() {
+        // Cố gắng bật nhạc khi bắt đầu chơi
+        bgMusic.play().then(() => {
+            isMusicPlaying = true;
+            document.getElementById('music-btn').innerHTML = '<i class="fas fa-music"></i>';
+            document.getElementById('music-btn').classList.replace('text-yellow-600', 'text-green-600');
+        }).catch(err => console.log("Trình duyệt yêu cầu tương tác để phát nhạc."));
+
+        // Trộn ngân hàng câu hỏi
+        shuffledQuestions = Array.from({length: questions.length}, (_, i) => i);
+        shuffledQuestions.sort(() => Math.random() - 0.5);
+        
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-map').classList.remove('hidden');
+        document.getElementById('screen-map').classList.add('flex');
+        
+        if(nodesGroup.children.length === 0) initMap();
+        updateMapUI();
+    }
+
+    function initMap() {
+        const pathLength = mapPath.getTotalLength();
+        const step = pathLength / TOTAL_STEPS; // Chia thành 15 chặng (16 điểm từ 0 tới 15)
+
+        for (let i = 0; i <= TOTAL_STEPS; i++) {
+            const point = mapPath.getPointAtLength(i * step);
+            
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("class", "question-node");
+
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", point.x);
+            circle.setAttribute("cy", point.y);
+            circle.setAttribute("r", i === 0 || i === TOTAL_STEPS ? "25" : "15");
+            circle.setAttribute("fill", i === 0 ? "#4ade80" : (i === TOTAL_STEPS ? "#facc15" : "#fff"));
+            circle.setAttribute("stroke", "#5d4037");
+            circle.setAttribute("stroke-width", "4");
+
+            g.appendChild(circle);
+
+            // Text hiển thị
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", point.x);
+            text.setAttribute("y", point.y + (i === 0 || i === TOTAL_STEPS ? 6 : 5));
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("font-weight", "900");
+            text.setAttribute("font-size", i === 0 || i === TOTAL_STEPS ? "16" : "14");
+            text.setAttribute("fill", i === 0 || i === TOTAL_STEPS ? "#000" : "#5d4037");
+            
+            if(i === 0) text.textContent = "START";
+            else if(i === TOTAL_STEPS) text.textContent = "ĐÍCH";
+            else text.textContent = i;
+
+            g.appendChild(text);
+            nodesGroup.appendChild(g);
+        }
+        updateTokens();
+    }
+
+    function updateTokens() {
+        const pathLength = mapPath.getTotalLength();
+        const step = pathLength / TOTAL_STEPS;
+
+        // Lấy tọa độ cho Đội 1
+        const p1 = mapPath.getPointAtLength(teamProgress[0] * step);
+        // Lấy tọa độ cho Đội 2
+        const p2 = mapPath.getPointAtLength(teamProgress[1] * step);
+
+        // Đặt lệch nhau 1 chút nếu 2 đội đứng cùng 1 ô
+        let offset1 = {x: 0, y: -25};
+        let offset2 = {x: 0, y: -25};
+
+        if(teamProgress[0] === teamProgress[1]) {
+            offset1 = {x: -15, y: -25};
+            offset2 = {x: 15, y: -25};
+        }
+
+        token1.setAttribute("transform", `translate(${p1.x + offset1.x}, ${p1.y + offset1.y})`);
+        token2.setAttribute("transform", `translate(${p2.x + offset2.x}, ${p2.y + offset2.y})`);
+    }
+
+    // 4. BỐC CÂU HỎI VÀ XỬ LÝ
+    function drawQuestion() {
+        if(isProcessing) return;
+
+        // Lấy câu hỏi ngẫu nhiên từ mảng đã trộn
+        if(currentQIndex >= shuffledQuestions.length) {
+            // Nếu hết câu hỏi, trộn lại
+            shuffledQuestions.sort(() => Math.random() - 0.5);
+            currentQIndex = 0;
+            showToast("Đã tráo lại ngân hàng câu hỏi!", "#3b82f6", "fa-sync-alt");
+        }
+
+        const realIndex = shuffledQuestions[currentQIndex];
+        currentDrawnQuestion = questions[realIndex];
+        currentQIndex++;
+        
+        openQuestionUI();
+    }
+
+    function openQuestionUI() {
+        document.getElementById('screen-map').classList.add('hidden');
+        document.getElementById('screen-map').classList.remove('flex');
+        
+        document.getElementById('screen-question').classList.remove('hidden');
+        document.getElementById('screen-question').classList.add('block'); // Sửa thành block để hỗ trợ cuộn dọc tốt hơn trên thiết bị hẹp dài
+
+        // Setup UI câu hỏi
+        const teamColor = currentTeamTurn === 0 ? 'bg-blue-600' : 'bg-red-600';
+        const teamName = currentTeamTurn === 0 ? 'ĐỘI 1' : 'ĐỘI 2';
+        
+        const indicator = document.getElementById('q-team-indicator');
+        indicator.className = `px-4 py-2 md:px-8 md:py-3 rounded-full text-white font-black text-lg md:text-2xl shadow-md border-2 md:border-4 border-white w-full md:w-auto text-center ${teamColor}`;
+        indicator.innerText = `LƯỢT CỦA ${teamName}`;
+
+        // Cập nhật trạng thái nút trợ giúp
+        const teamHelps = helps[currentTeamTurn];
+        updateHelpBtn('help-ask', teamHelps.ask, 'ask');
+        updateHelpBtn('help-5050', teamHelps.fifty, 'fifty');
+        updateHelpBtn('help-change', teamHelps.change, 'change');
+
+        document.getElementById('q-text').innerText = currentDrawnQuestion.q;
+
+        const btns = document.querySelectorAll('.opt-btn');
+        btns.forEach((btn, i) => {
+            btn.classList.remove('correct-answer', 'wrong-answer', 'opacity-0', 'pointer-events-none');
+            btn.disabled = false;
+            document.getElementById(`opt-${i}`).innerText = currentDrawnQuestion.a[i];
+        });
+
+        // Ẩn các nút hành động
+        document.getElementById('action-buttons').classList.add('hidden');
+        document.getElementById('action-buttons').classList.remove('block');
+
+        // Bắt đầu đếm ngược 60s
+        startTimer();
+    }
+
+    // --- HỆ THỐNG ĐẾM NGƯỢC THỜI GIAN ---
+    function startTimer() {
+        timeLeft = 60;
+        updateTimerUI();
+        clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimerUI();
+            
+            if (timeLeft <= 0) {
+                handleTimeOut();
+            }
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    function updateTimerUI() {
+        const bar = document.getElementById('timer-bar');
+        const text = document.getElementById('timer-text');
+        
+        text.innerText = timeLeft + 's';
+        let percent = (timeLeft / 60) * 100;
+        bar.style.width = percent + '%';
+        
+        // Đổi màu thanh trạng thái theo thời gian
+        if (timeLeft > 20) {
+            bar.className = 'h-full transition-all duration-1000 ease-linear w-full bg-green-500';
+        } else if (timeLeft > 5) {
+            bar.className = 'h-full transition-all duration-1000 ease-linear w-full bg-yellow-500';
+        } else {
+            bar.className = 'h-full transition-all duration-1000 ease-linear w-full bg-red-500';
+        }
+    }
+
+    function handleTimeOut() {
+        if(isProcessing) return;
+        isProcessing = true;
+        stopTimer();
+
+        const btns = document.querySelectorAll('.opt-btn');
+        btns.forEach(b => b.disabled = true);
+        
+        // Hiện đáp án đúng
+        btns[currentDrawnQuestion.c].classList.add('correct-answer');
+
+        // Lùi 1 bước vì hết giờ tương đương trả lời sai
+        teamProgress[currentTeamTurn] = Math.max(0, teamProgress[currentTeamTurn] - 1);
+        showToast("Hết giờ! Lùi 1 bước", "#f87171", "fa-clock");
+
+        // Hiện nút hành động để người chơi ấn Tiếp Tục
+        setTimeout(() => {
+            document.getElementById('action-buttons').classList.remove('hidden');
+            document.getElementById('action-buttons').classList.add('block');
+        }, 1000);
+    }
+    // ----------------------------------
+
+    function updateHelpBtn(id, isAvailable, type) {
+        const btn = document.getElementById(id);
+        if(!isAvailable) {
+            btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+            btn.removeAttribute('onclick');
+        } else {
+            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+            btn.setAttribute('onclick', `useHelp('${type}')`);
+        }
+    }
+
+    function useHelp(type) {
+        if(isProcessing) return;
+
+        helps[currentTeamTurn][type] = false; // Đánh dấu đã dùng
+        updateHelpBtn(`help-${type === 'fifty' ? '5050' : type}`, false, type);
+
+        if(type === 'ask') {
+            showToast(`Đội ${currentTeamTurn + 1} đang hỏi ý kiến khán giả/người thân!`, "#a855f7", "fa-users");
+        } 
+        else if (type === 'fifty') {
+            let wrongIndexes = [0, 1, 2, 3].filter(i => i !== currentDrawnQuestion.c);
+            // Chọn ngẫu nhiên 2 đáp án sai để ẩn
+            wrongIndexes.sort(() => 0.5 - Math.random());
+            document.getElementById(`btn-opt-${wrongIndexes[0]}`).classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById(`btn-opt-${wrongIndexes[1]}`).classList.add('opacity-0', 'pointer-events-none');
+            showToast("Đã loại bỏ 2 phương án sai!", "#f97316", "fa-star-half-alt");
+        }
+        else if (type === 'change') {
+            showToast(`Đội ${currentTeamTurn + 1} đã đổi câu hỏi khác!`, "#3b82f6", "fa-sync-alt");
+            
+            // Dừng đồng hồ hiện tại
+            stopTimer();
+
+            // Bốc một câu hỏi mới ngay lập tức
+            if(currentQIndex >= shuffledQuestions.length) {
+                shuffledQuestions.sort(() => Math.random() - 0.5);
+                currentQIndex = 0;
+            }
+            const realIndex = shuffledQuestions[currentQIndex];
+            currentDrawnQuestion = questions[realIndex];
+            currentQIndex++;
+
+            // Render lại giao diện cho câu hỏi mới
+            document.getElementById('q-text').innerText = currentDrawnQuestion.q;
+            const btns = document.querySelectorAll('.opt-btn');
+            btns.forEach((btn, i) => {
+                btn.classList.remove('correct-answer', 'wrong-answer', 'opacity-0', 'pointer-events-none');
+                btn.disabled = false;
+                document.getElementById(`opt-${i}`).innerText = currentDrawnQuestion.a[i];
+            });
+
+            // Khởi động lại đồng hồ 60s
+            startTimer();
+        }
+    }
+
+    // 5. XỬ LÝ ĐÁP ÁN (TIẾN / LÙI)
+    function handleAnswer(choice) {
+        if(isProcessing) return;
+        isProcessing = true;
+        
+        // Dừng đếm ngược
+        stopTimer();
+
+        const btns = document.querySelectorAll('.opt-btn');
+        btns.forEach(b => b.disabled = true);
+
+        if(choice === currentDrawnQuestion.c) {
+            // ĐÚNG -> Tiến 1 bước
+            btns[choice].classList.add('correct-answer');
+            teamProgress[currentTeamTurn] = Math.min(TOTAL_STEPS, teamProgress[currentTeamTurn] + 1);
+            showToast("Tuyệt vời! Tiến 1 bước", "#4ade80", "fa-arrow-up");
+        } else {
+            // SAI -> Lùi 1 bước
+            btns[choice].classList.add('wrong-answer');
+            btns[currentDrawnQuestion.c].classList.add('correct-answer');
+            teamProgress[currentTeamTurn] = Math.max(0, teamProgress[currentTeamTurn] - 1);
+            showToast("Sai rồi! Lùi 1 bước", "#f87171", "fa-arrow-down");
+        }
+
+        // Hiện nút hành động để người chơi ấn Tiếp Tục
+        setTimeout(() => {
+            document.getElementById('action-buttons').classList.remove('hidden');
+            document.getElementById('action-buttons').classList.add('block');
+        }, 1000);
+    }
+
+    function continueJourney() {
+        // Quay về bản đồ
+        document.getElementById('screen-question').classList.add('hidden');
+        document.getElementById('screen-question').classList.remove('block');
+        
+        document.getElementById('screen-map').classList.remove('hidden');
+        document.getElementById('screen-map').classList.add('flex');
+        
+        // Di chuyển Token
+        updateTokens();
+
+        // Kiểm tra có ai Win chưa
+        if(teamProgress[currentTeamTurn] >= TOTAL_STEPS) {
+            setTimeout(endGame, 800);
+        } else {
+            // Đổi lượt nếu chưa kết thúc
+            currentTeamTurn = currentTeamTurn === 0 ? 1 : 0;
+            updateMapUI();
+            isProcessing = false;
+        }
+    }
+
+    function updateMapUI() {
+        document.getElementById('map-score-1').innerText = teamProgress[0];
+        document.getElementById('map-score-2').innerText = teamProgress[1];
+        
+        const t1 = document.getElementById('map-team-1');
+        const t2 = document.getElementById('map-team-2');
+        const info = document.getElementById('map-info');
+
+        if(currentTeamTurn === 0) {
+            t1.classList.remove('opacity-50'); t1.classList.add('turn-active');
+            t2.classList.add('opacity-50'); t2.classList.remove('turn-active');
+            info.innerHTML = "<i class='fas fa-flag text-blue-600 mr-2'></i> Lượt của Đội 1";
+            info.className = "text-xs md:text-2xl font-black text-blue-800 uppercase px-3 py-1 md:px-8 md:py-2 bg-yellow-300 rounded-full border md:border-2 border-blue-500 shadow-lg";
+        } else {
+            t2.classList.remove('opacity-50'); t2.classList.add('turn-active');
+            t1.classList.add('opacity-50'); t1.classList.remove('turn-active');
+            info.innerHTML = "<i class='fas fa-flag text-red-600 mr-2'></i> Lượt của Đội 2";
+            info.className = "text-xs md:text-2xl font-black text-red-800 uppercase px-3 py-1 md:px-8 md:py-2 bg-yellow-300 rounded-full border md:border-2 border-red-500 shadow-lg";
+        }
+    }
+
+    function showToast(msg, color, iconClass) {
+        const t = document.getElementById('toast');
+        t.innerHTML = `<i class="fas ${iconClass}"></i> ${msg}`;
+        t.style.backgroundColor = color;
+        t.style.opacity = "1";
+        // Chuyển vị trí từ trên màn hình rơi xuống
+        t.style.top = "20px"; // Đã điều chỉnh để không bị che khuất trên mobile
+        
+        setTimeout(() => {
+            t.style.opacity = "0";
+            // Kéo giấu đi lên trên màn hình
+            t.style.top = "-100px"; 
+        }, 2000);
+    }
+
+    function endGame() {
+        // Tắt nhạc nền và bật nhạc chiến thắng
+        bgMusic.pause();
+        endMusic.play().catch(err => console.log("Không thể tự động phát nhạc win do trình duyệt chặn."));
+
+        document.getElementById('screen-map').classList.add('hidden');
+        document.getElementById('screen-map').classList.remove('flex');
+        
+        document.getElementById('screen-end').classList.remove('hidden');
+        document.getElementById('screen-end').classList.add('flex');
+        
+        const winnerText = document.getElementById('winner-announcement');
+        if(teamProgress[0] >= TOTAL_STEPS) {
+            winnerText.innerText = "ĐỘI 1 ĐÃ TÌM THẤY KHO BÁU!";
+            winnerText.className = "text-3xl md:text-6xl font-black text-blue-500 mb-6 md:mb-10 uppercase text-shadow-sm";
+        } else {
+            winnerText.innerText = "ĐỘI 2 ĐÃ TÌM THẤY KHO BÁU!";
+            winnerText.className = "text-3xl md:text-6xl font-black text-red-500 mb-6 md:mb-10 uppercase text-shadow-sm";
+        }
+    }
+</script>
+</body>
+</html>
